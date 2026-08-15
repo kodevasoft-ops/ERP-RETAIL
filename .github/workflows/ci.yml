@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: erp
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: erp_retail_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U erp"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Generar cliente Prisma
+        run: pnpm --filter database db:generate
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Aplicar migraciones (BD de test)
+        run: pnpm --filter database db:migrate:deploy
+        env:
+          DATABASE_URL: postgresql://erp:test_password@localhost:5432/erp_retail_test
+
+      - name: Tests unitarios
+        run: pnpm --filter api test
+        env:
+          AES_ENCRYPTION_KEY: clave-de-test-de-al-menos-32-caracteres
+
+      - name: Tests de concurrencia (condiciones de carrera reales)
+        run: pnpm --filter api test:concurrencia
+        env:
+          DATABASE_URL: postgresql://erp:test_password@localhost:5432/erp_retail_test
+
+      - name: Smoke tests (arranque real de la app)
+        run: pnpm --filter api test:smoke
+        env:
+          DATABASE_URL: postgresql://erp:test_password@localhost:5432/erp_retail_test
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          JWT_ACCESS_SECRET: clave-de-test-de-al-menos-32-caracteres
+          JWT_REFRESH_SECRET: otra-clave-de-test-de-al-menos-32-caracteres
+          COOKIE_SECRET: clave-de-test-de-al-menos-32-caracteres
+          AES_ENCRYPTION_KEY: clave-de-test-de-al-menos-32-caracteres
+          CORS_ORIGINS: http://localhost:5173
+
+      - name: Build (API + Web)
+        run: pnpm build
+
+  docker-build:
+    needs: lint-and-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build imagen API
+        run: docker build -f apps/api/Dockerfile -t erp-retail-api:${{ github.sha }} .
+
+      - name: Build imagen Worker
+        run: docker build -f apps/api/Dockerfile.worker -t erp-retail-worker:${{ github.sha }} .
+
+      - name: Build imagen Edge (Nginx + Web)
+        run: docker build -f infra/nginx/Dockerfile.edge -t erp-retail-edge:${{ github.sha }} .
+
+      # Push a registry y despliegue van aquí — se dejan como placeholder
+      # porque dependen del proveedor (ECR, GHCR, etc.) y de tus credenciales.
+      # - name: Push a registry
+      #   run: |
+      #     docker tag erp-retail-api:${{ github.sha }} tu-registry/erp-retail-api:latest
+      #     docker push tu-registry/erp-retail-api:latest

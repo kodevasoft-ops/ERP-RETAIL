@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.production
+secrets/db_password.txt
+*.log
+.turbo/
+.DS_Store
+coverage/
+.vscode/
+!.vscode/extensions.json

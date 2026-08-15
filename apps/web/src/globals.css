@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light mode — blanco cálido, grises muy claros, azul profesional */
+    --background: 30 20% 99%;
+    --foreground: 220 15% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 12%;
+    --border: 220 15% 91%;
+    --muted: 220 20% 96%;
+    --muted-foreground: 220 10% 45%;
+    --primary: 217 91% 45%;
+    --primary-foreground: 0 0% 100%;
+    --success: 152 60% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 50%;
+    --warning-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    /* Dark mode diseñado a propósito, no una simple inversión */
+    --background: 222 18% 9%;
+    --foreground: 210 15% 92%;
+    --card: 222 16% 12%;
+    --card-foreground: 210 15% 92%;
+    --border: 220 12% 20%;
+    --muted: 220 14% 16%;
+    --muted-foreground: 220 10% 60%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 18% 9%;
+    --success: 152 55% 45%;
+    --success-foreground: 222 18% 9%;
+    --warning: 32 90% 58%;
+    --warning-foreground: 222 18% 9%;
+    --destructive: 0 70% 60%;
+    --destructive-foreground: 222 18% 9%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
